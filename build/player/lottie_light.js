@@ -5683,6 +5683,7 @@ SVGRenderer.prototype.buildItem  = function(pos){
     }
     elements[pos] = true;
     var element = this.createItem(this.layers[pos]);
+    element.layerElement.dataset.layerName = this.layers[pos].nm;
 
     elements[pos] = element;
     if(expressionsPlugin){
