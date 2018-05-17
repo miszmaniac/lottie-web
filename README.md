@@ -45,29 +45,37 @@ CC 2014 and up.
 
 ### Option 4:
 - Close After Effects<br/>
-- Extract the zipped file on build/extension/bodymovin.zxp to the adobe CEP folder:<br/>
+- Extract the zipped file on `build/extension/bodymovin.zxp` to the adobe CEP folder:<br/>
 WINDOWS:<br/>
-C:\Program Files (x86)\Common Files\Adobe\CEP\extensions or<br/>
-C:\<username>\AppData\Roaming\Adobe\CEP\extensions<br/>
+`C:\Program Files (x86)\Common Files\Adobe\CEP\extensions or`<br/>
+`C:\<username>\AppData\Roaming\Adobe\CEP\extensions`<br/>
 MAC:<br/>
-/Library/Application\ Support/Adobe/CEP/extensions/bodymovin<br/>
+`/Library/Application\ Support/Adobe/CEP/extensions/bodymovin`<br/>
 (you can open the terminal and type:<br/>
-cp -R YOURUNZIPEDFOLDERPATH/extension /Library/Application\ Support/Adobe/CEP/extensions/bodymovin<br/>
+`$ cp -R YOURUNZIPEDFOLDERPATH/extension /Library/Application\ Support/Adobe/CEP/extensions/bodymovin`<br/>
 then type:<br/>
-ls /Library/Application\ Support/Adobe/CEP/extensions/bodymovin<br/>
+`$ ls /Library/Application\ Support/Adobe/CEP/extensions/bodymovin`<br/>
 to make sure it was copied correctly type)<br/>
 
 - Edit the registry key:<br/>
 WINDOWS:<br/>
-open the registry key HKEY_CURRENT_USER/Software/Adobe/CSXS.6 and add a key named PlayerDebugMode, of type String, and value 1.<br/>
+open the registry key `HKEY_CURRENT_USER/Software/Adobe/CSXS.6` and add a key named `PlayerDebugMode`, of type String, and value `1`.<br/>
 MAC:<br/>
-open the file ~/Library/Preferences/com.adobe.CSXS.6.plist and add a row with key PlayerDebugMode, of type String, and value 1.<br/>
+open the file `~/Library/Preferences/com.adobe.CSXS.6.plist` and add a row with key `PlayerDebugMode`, of type String, and value `1`.<br/>
 
 ### Option 5:
 
 Install the zxp manually following the instructions here:
 https://helpx.adobe.com/x-productkb/global/installingextensionsandaddons.html
 Skip directly to "Install third-party extensions"
+
+### Option 6:
+
+Install with [Homebrew](http://brew.sh)-[adobe](https://github.com/danielbayley/homebrew-adobe):
+```bash
+brew tap danielbayley/adobe
+brew cask install lottie
+```
 
 ### After installing
 - **Windows:** Go to Edit > Preferences > General > and check on "Allow Scripts to Write Files and Access Network"
@@ -176,8 +184,11 @@ Animation instances have these main methods:
 ***
 ### destroy()
 ***
+### getDuration(inFrames)
+- `inFrames`:  If true, returns duration in frames, if false, in seconds.
+***
 
-### Aditional methods:
+### Additional methods:
 - updateTextDocumentData -- updates a text layer's data
 [More Info](https://github.com/airbnb/lottie-web/wiki/TextLayer.updateDocumentData)
 ***
@@ -211,7 +222,7 @@ you can also use addEventListener with the following events:
 - destroy
 
 #### Other loading options
-- if you want to use an existing canvas to draw, you can pass an extra object: 'renderer' with the following configuration:
+- if you want to use an existing canvas to draw, you can pass an extra object: 'rendererSettings' with the following configuration:
 ```js
 lottie.loadAnimation({
   container: element, // the dom element
@@ -260,7 +271,7 @@ You can preview or take an svg snapshot of the animation to use as poster. After
 
 ### Files
 If you have any images or AI layers that you haven't converted to shapes (I recommend that you convert them, so they get exported as vectors, right click each layer and do: "Create shapes from Vector Layers"), they will be saved to an images folder relative to the destination json folder.
-Beware not to overwrite an exiting folder on that same location.
+Beware not to overwrite an existing folder on that same location.
 
 
 ### Performance

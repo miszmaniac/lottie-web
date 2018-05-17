@@ -5,6 +5,7 @@ var animationManager = (function(){
     var len = 0;
     var idled = true;
     var playingAnimationsNum = 0;
+    var _stopped = true;
 
     function removeElement(ev){
         var i = 0;
@@ -87,17 +88,7 @@ var animationManager = (function(){
             registeredAnimations[i].animation.play(animation);
         }
     }
-
-    function moveFrame (value, animation) {
-        initTime = Date.now();
-        var i;
-        for(i=0;i<len;i+=1){
-            registeredAnimations[i].animation.moveFrame(value,animation);
-        }
-    }
-
     function resume(nowTime) {
-
         var elapsedTime = nowTime - initTime;
         var i;
         for(i=0;i<len;i+=1){
@@ -106,6 +97,8 @@ var animationManager = (function(){
         initTime = nowTime;
         if(!idled) {
             window.requestAnimationFrame(resume);
+        } else {
+            _stopped = true;
         }
     }
 
@@ -165,7 +158,7 @@ var animationManager = (function(){
             }
             var body = document.getElementsByTagName('body')[0];
             body.innerHTML = '';
-            var div = document.createElement('div');
+            var div = createTag('div');
             div.style.width = '100%';
             div.style.height = '100%';
             div.setAttribute('data-bm-type',renderer);
@@ -181,33 +174,35 @@ var animationManager = (function(){
         }
     }
 
-    function start(){
+    /*function start(){
         window.requestAnimationFrame(first);
-    }
+    }*/
 
     function activate(){
         if(idled){
             idled = false;
-            window.requestAnimationFrame(first);
+            if(_stopped) {
+                window.requestAnimationFrame(first);
+                _stopped = false;
+            }
         }
     }
 
     //start();
 
-    setTimeout(start,0);
+    //setTimeout(start,0);
 
     moduleOb.registerAnimation = registerAnimation;
     moduleOb.loadAnimation = loadAnimation;
     moduleOb.setSpeed = setSpeed;
     moduleOb.setDirection = setDirection;
     moduleOb.play = play;
-    moduleOb.moveFrame = moveFrame;
     moduleOb.pause = pause;
     moduleOb.stop = stop;
     moduleOb.togglePause = togglePause;
     moduleOb.searchAnimations = searchAnimations;
     moduleOb.resize = resize;
-    moduleOb.start = start;
+    //moduleOb.start = start;
     moduleOb.goToAndStop = goToAndStop;
     moduleOb.destroy = destroy;
     return moduleOb;

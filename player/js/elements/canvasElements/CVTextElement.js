@@ -1,4 +1,4 @@
-function CVTextElement(data, comp, globalData){
+function CVTextElement(data, globalData, comp){
     this.textSpans = [];
     this.yOffset = 0;
     this.fillColorAnim = false;
@@ -14,25 +14,16 @@ function CVTextElement(data, comp, globalData){
         stroke: 'rgba(0,0,0,0)',
         sWidth: 0,
         fValue: ''
-    }
-    this._parent.constructor.call(this,data,comp, globalData);
+    };
+    this.initElement(data,globalData,comp);
 }
-createElement(CVBaseElement, CVTextElement);
+extendPrototype([BaseElement,TransformElement,CVBaseElement,HierarchyElement,FrameElement,RenderableElement,ITextElement], CVTextElement);
 
-extendPrototype(ITextElement, CVTextElement);
-
-CVTextElement.prototype.tHelper = document.createElement('canvas').getContext('2d');
-
-CVTextElement.prototype.createElements = function(){
-
-    this._parent.createElements.call(this);
-    //console.log('this.data: ',this.data);
-
-};
+CVTextElement.prototype.tHelper = createTag('canvas').getContext('2d');
 
 CVTextElement.prototype.buildNewText = function(){
     var documentData = this.textProperty.currentData;
-    this.renderedLetters = Array.apply(null,{length:documentData.l ? documentData.l.length : 0});
+    this.renderedLetters = createSizedArray(documentData.l ? documentData.l.length : 0);
 
     var hasFill = false;
     if(documentData.fc) {
@@ -53,15 +44,15 @@ CVTextElement.prototype.buildNewText = function(){
     var letters = documentData.l;
     var matrixHelper = this.mHelper;
     this.stroke = hasStroke;
-    this.values.fValue = documentData.s + 'px '+ this.globalData.fontManager.getFontByName(documentData.f).fFamily;
-    len = documentData.t.length;
+    this.values.fValue = documentData.finalSize + 'px '+ this.globalData.fontManager.getFontByName(documentData.f).fFamily;
+    len = documentData.finalText.length;
     //this.tHelper.font = this.values.fValue;
     var charData, shapeData, k, kLen, shapes, j, jLen, pathNodes, commands, pathArr, singleShape = this.data.singleShape;
-    var trackingOffset = documentData.tr/1000*documentData.s;
+    var trackingOffset = documentData.tr/1000*documentData.finalSize;
     var xPos = 0, yPos = 0, firstLine = true;
     var cnt = 0;
     for (i = 0; i < len; i += 1) {
-        charData = this.globalData.fontManager.getCharData(documentData.t.charAt(i), fontData.fStyle, this.globalData.fontManager.getFontByName(documentData.f).fFamily);
+        charData = this.globalData.fontManager.getCharData(documentData.finalText[i], fontData.fStyle, this.globalData.fontManager.getFontByName(documentData.f).fFamily);
         shapeData = charData && charData.data || {};
         matrixHelper.reset();
         if(singleShape && letters[i].n) {
@@ -73,11 +64,11 @@ CVTextElement.prototype.buildNewText = function(){
 
         shapes = shapeData.shapes ? shapeData.shapes[0].it : [];
         jLen = shapes.length;
-        matrixHelper.scale(documentData.s/100,documentData.s/100);
+        matrixHelper.scale(documentData.finalSize/100,documentData.finalSize/100);
         if(singleShape){
             this.applyTextPropertiesToMatrix(documentData, matrixHelper, letters[i].line, xPos, yPos);
         }
-        commands = Array.apply(null,{length:jLen})
+        commands = createSizedArray(jLen);
         for(j=0;j<jLen;j+=1){
             kLen = shapes[j].ks.k.i.length;
             pathNodes = shapes[j].ks.k;
@@ -102,17 +93,11 @@ CVTextElement.prototype.buildNewText = function(){
         }
         cnt +=1;
     }
-}
+};
 
-CVTextElement.prototype.renderFrame = function(parentMatrix){
-    if(this._parent.renderFrame.call(this, parentMatrix)===false){
-        return;
-    }
+CVTextElement.prototype.renderInnerContent = function(){
     var ctx = this.canvasContext;
     var finalMat = this.finalTransform.mat.props;
-    this.globalData.renderer.save();
-    this.globalData.renderer.ctxTransform(finalMat);
-    this.globalData.renderer.ctxOpacity(this.finalTransform.opacity);
     ctx.font = this.values.fValue;
     ctx.lineCap = 'butt';
     ctx.lineJoin = 'miter';
@@ -206,8 +191,4 @@ CVTextElement.prototype.renderFrame = function(parentMatrix){
     /*if(this.data.hasMask){
      this.globalData.renderer.restore(true);
      }*/
-    this.globalData.renderer.restore(this.data.hasMask);
-    if(this.firstFrame){
-        this.firstFrame = false;
-    }
 };

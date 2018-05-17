@@ -21,13 +21,13 @@ var BMMath = {};
     }
 }());
 
-function ProjectInterface(){return {}};
+function ProjectInterface(){return {};}
 
 BMMath.random = Math.random;
 BMMath.abs = function(val){
     var tOfVal = typeof val;
     if(tOfVal === 'object' && val.length){
-        var absArr = Array.apply(null,{length:val.length});
+        var absArr = createSizedArray(val.length);
         var i, len = val.length;
         for(i=0;i<len;i+=1){
             absArr[i] = Math.abs(val[i]);
@@ -36,7 +36,7 @@ BMMath.abs = function(val){
     }
     return Math.abs(val);
 
-}
+};
 var defaultCurveSegments = 150;
 var degToRads = Math.PI/180;
 var roundCorner = 0.5519;
@@ -62,14 +62,6 @@ function styleDiv(element){
     element.style.transformStyle = element.style.webkitTransformStyle = element.style.mozTransformStyle = "preserve-3d";
 }
 
-function styleUnselectableDiv(element){
-    element.style.userSelect = 'none';
-    element.style.MozUserSelect = 'none';
-    element.style.webkitUserSelect = 'none';
-    element.style.oUserSelect = 'none';
-
-}
-
 function BMEnterFrameEvent(n,c,t,d){
     this.type = n;
     this.currentTime = c;
@@ -84,8 +76,8 @@ function BMCompleteEvent(n,d){
 
 function BMCompleteLoopEvent(n,c,t,d){
     this.type = n;
-    this.currentLoop = c;
-    this.totalLoops = t;
+    this.currentLoop = t;
+    this.totalLoops = c;
     this.direction = d < 0 ? -1:1;
 }
 
@@ -100,48 +92,6 @@ function BMDestroyEvent(n,t){
     this.target = t;
 }
 
-function _addEventListener(eventName, callback){
-
-    if (!this._cbs[eventName]){
-        this._cbs[eventName] = [];
-    }
-    this._cbs[eventName].push(callback);
-
-	return function() {
-		this.removeEventListener(eventName, callback);
-	}.bind(this);
-}
-
-function _removeEventListener(eventName,callback){
-
-    if (!callback){
-        this._cbs[eventName] = null;
-    }else if(this._cbs[eventName]){
-        var i = 0, len = this._cbs[eventName].length;
-        while(i<len){
-            if(this._cbs[eventName][i] === callback){
-                this._cbs[eventName].splice(i,1);
-                i -=1;
-                len -= 1;
-            }
-            i += 1;
-        }
-        if(!this._cbs[eventName].length){
-            this._cbs[eventName] = null;
-        }
-    }
-
-}
-
-function _triggerEvent(eventName, args){
-    if (this._cbs[eventName]) {
-        var len = this._cbs[eventName].length;
-        for (var i = 0; i < len; i++){
-            this._cbs[eventName][i](args);
-        }
-    }
-}
-
 function randomString(length, chars){
     if(chars === undefined){
         chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890';
@@ -154,21 +104,18 @@ function randomString(length, chars){
 
 function HSVtoRGB(h, s, v) {
     var r, g, b, i, f, p, q, t;
-    if (arguments.length === 1) {
-        s = h.s, v = h.v, h = h.h;
-    }
     i = Math.floor(h * 6);
     f = h * 6 - i;
     p = v * (1 - s);
     q = v * (1 - f * s);
     t = v * (1 - (1 - f) * s);
     switch (i % 6) {
-        case 0: r = v, g = t, b = p; break;
-        case 1: r = q, g = v, b = p; break;
-        case 2: r = p, g = v, b = t; break;
-        case 3: r = p, g = q, b = v; break;
-        case 4: r = t, g = p, b = v; break;
-        case 5: r = v, g = p, b = q; break;
+        case 0: r = v; g = t; b = p; break;
+        case 1: r = q; g = v; b = p; break;
+        case 2: r = p; g = v; b = t; break;
+        case 3: r = p; g = q; b = v; break;
+        case 4: r = t; g = p; b = v; break;
+        case 5: r = v; g = p; b = q; break;
     }
     return [ r,
         g,
@@ -176,9 +123,6 @@ function HSVtoRGB(h, s, v) {
 }
 
 function RGBtoHSV(r, g, b) {
-    if (arguments.length === 1) {
-        g = r.g, b = r.b, r = r.r;
-    }
     var max = Math.max(r, g, b), min = Math.min(r, g, b),
         d = max - min,
         h,

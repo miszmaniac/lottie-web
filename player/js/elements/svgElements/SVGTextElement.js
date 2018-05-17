@@ -1,33 +1,39 @@
-function SVGTextElement(data,parentContainer,globalData,comp, placeholder){
+function SVGTextElement(data,globalData,comp){
     this.textSpans = [];
     this.renderType = 'svg';
-    this._parent.constructor.call(this,data,parentContainer,globalData,comp, placeholder);
+    this.initElement(data,globalData,comp);
 }
-createElement(SVGBaseElement, SVGTextElement);
 
-extendPrototype(ITextElement, SVGTextElement);
+extendPrototype([BaseElement,TransformElement,SVGBaseElement,HierarchyElement,FrameElement,RenderableDOMElement,ITextElement], SVGTextElement);
 
-SVGTextElement.prototype.createElements = function(){
+SVGTextElement.prototype.createContent = function(){
 
-    this._parent.createElements.call(this);
-
-
-    if(this.data.ln){
-        this.layerElement.setAttribute('id',this.data.ln);
-    }
-    if(this.data.cl){
-        this.layerElement.setAttribute('class',this.data.cl);
-    }
     if (this.data.singleShape && !this.globalData.fontManager.chars) {
         this.textContainer = createNS('text');
     }
 };
 
+SVGTextElement.prototype.buildTextContents = function(textArray) {
+    var i = 0, len = textArray.length;
+    var textContents = [], currentTextContent = '';
+    while (i < len) {
+        if(textArray[i] === String.fromCharCode(13)) {
+            textContents.push(currentTextContent);
+            currentTextContent = '';
+        } else {
+            currentTextContent += textArray[i];
+        }
+        i += 1;
+    }
+    textContents.push(currentTextContent);
+    return textContents;
+}
+
 SVGTextElement.prototype.buildNewText = function(){
     var i, len;
 
     var documentData = this.textProperty.currentData;
-    this.renderedLetters = Array.apply(null,{length:documentData ? documentData.l.length : 0});
+    this.renderedLetters = createSizedArray(documentData ? documentData.l.length : 0);
     if(documentData.fc) {
         this.layerElement.setAttribute('fill', this.buildColor(documentData.fc));
     }else{
@@ -37,7 +43,7 @@ SVGTextElement.prototype.buildNewText = function(){
         this.layerElement.setAttribute('stroke', this.buildColor(documentData.sc));
         this.layerElement.setAttribute('stroke-width', documentData.sw);
     }
-    this.layerElement.setAttribute('font-size', documentData.s);
+    this.layerElement.setAttribute('font-size', documentData.finalSize);
     var fontData = this.globalData.fontManager.getFontByName(documentData.f);
     if(fontData.fClass){
         this.layerElement.setAttribute('class',fontData.fClass);
@@ -58,10 +64,10 @@ SVGTextElement.prototype.buildNewText = function(){
     var matrixHelper = this.mHelper;
     var shapes, shapeStr = '', singleShape = this.data.singleShape;
     var xPos = 0, yPos = 0, firstLine = true;
-    var trackingOffset = documentData.tr/1000*documentData.s;
-    if(singleShape && !usesGlyphs) {
+    var trackingOffset = documentData.tr/1000*documentData.finalSize;
+    if(singleShape && !usesGlyphs && !documentData.sz) {
         var tElement = this.textContainer;
-        var justify = '';
+        var justify = 'start';
         switch(documentData.j) {
             case 1:
                 justify = 'end';
@@ -69,15 +75,12 @@ SVGTextElement.prototype.buildNewText = function(){
             case 2:
                 justify = 'middle';
                 break;
-            case 2:
-                justify = 'start';
-                break;
         }
         tElement.setAttribute('text-anchor',justify);
         tElement.setAttribute('letter-spacing',trackingOffset);
-        var textContent = documentData.t.split(String.fromCharCode(13));
+        var textContent = this.buildTextContents(documentData.finalText);
         len = textContent.length;
-        var yPos = documentData.ps ? documentData.ps[1] + documentData.ascent : 0;
+        yPos = documentData.ps ? documentData.ps[1] + documentData.ascent : 0;
         for ( i = 0; i < len; i += 1) {
             tSpan = this.textSpans[i] || createNS('tspan');
             tSpan.textContent = textContent[i];
@@ -86,7 +89,7 @@ SVGTextElement.prototype.buildNewText = function(){
             tSpan.style.display = 'inherit';
             tElement.appendChild(tSpan);
             this.textSpans[i] = tSpan;
-            yPos += documentData.lh;
+            yPos += documentData.finalLineHeight;
         }
         
         this.layerElement.appendChild(tElement);
@@ -107,21 +110,21 @@ SVGTextElement.prototype.buildNewText = function(){
             }
             
             matrixHelper.reset();
-            if(usesGlyphs) {
-                matrixHelper.scale(documentData.s / 100, documentData.s / 100);
-                if (singleShape) {
-                    if(letters[i].n) {
-                        xPos = -trackingOffset;
-                        yPos += documentData.yOffset;
-                        yPos += firstLine ? 1 : 0;
-                        firstLine = false;
-                    }
-                    this.applyTextPropertiesToMatrix(documentData, matrixHelper, letters[i].line, xPos, yPos);
-                    xPos += letters[i].l || 0;
-                    //xPos += letters[i].val === ' ' ? 0 : trackingOffset;
-                    xPos += trackingOffset;
+            matrixHelper.scale(documentData.finalSize / 100, documentData.finalSize / 100);
+            if (singleShape) {
+                if(letters[i].n) {
+                    xPos = -trackingOffset;
+                    yPos += documentData.yOffset;
+                    yPos += firstLine ? 1 : 0;
+                    firstLine = false;
                 }
-                charData = this.globalData.fontManager.getCharData(documentData.t.charAt(i), fontData.fStyle, this.globalData.fontManager.getFontByName(documentData.f).fFamily);
+                this.applyTextPropertiesToMatrix(documentData, matrixHelper, letters[i].line, xPos, yPos);
+                xPos += letters[i].l || 0;
+                //xPos += letters[i].val === ' ' ? 0 : trackingOffset;
+                xPos += trackingOffset;
+            }
+            if(usesGlyphs) {
+                charData = this.globalData.fontManager.getCharData(documentData.finalText[i], fontData.fStyle, this.globalData.fontManager.getFontByName(documentData.f).fFamily);
                 shapeData = charData && charData.data || {};
                 shapes = shapeData.shapes ? shapeData.shapes[0].it : [];
                 if(!singleShape){
@@ -130,6 +133,9 @@ SVGTextElement.prototype.buildNewText = function(){
                     shapeStr += this.createPathShape(matrixHelper,shapes);
                 }
             } else {
+                if(singleShape) {
+                    tSpan.setAttribute("transform", "translate(" + matrixHelper.props[12] + "," + matrixHelper.props[13] + ")");
+                }
                 tSpan.textContent = letters[i].val;
                 tSpan.setAttributeNS("http://www.w3.org/XML/1998/namespace", "xml:space","preserve");
             }
@@ -145,11 +151,11 @@ SVGTextElement.prototype.buildNewText = function(){
     }
     
     this._sizeChanged = true;
-}
+};
 
 SVGTextElement.prototype.sourceRectAtTime = function(time){
     this.prepareFrame(this.comp.renderedFrame - this.data.st);
-    this.renderLetters();
+    this.renderInnerContent();
     if(this._sizeChanged){
         this._sizeChanged = false;
         var textBox = this.layerElement.getBBox();
@@ -158,12 +164,12 @@ SVGTextElement.prototype.sourceRectAtTime = function(time){
             left: textBox.x,
             width: textBox.width,
             height: textBox.height
-        }
+        };
     }
     return this.bbox;
-}
+};
 
-SVGTextElement.prototype.renderLetters = function(){
+SVGTextElement.prototype.renderInnerContent = function(){
 
     if(!this.data.singleShape){
         this.textAnimator.getMeasures(this.textProperty.currentData, this.lettersChangedFlag);
@@ -182,38 +188,22 @@ SVGTextElement.prototype.renderLetters = function(){
                 }
                 renderedLetter = renderedLetters[i];
                 textSpan = this.textSpans[i];
-                if(renderedLetter.mdf.m) {
+                if(renderedLetter._mdf.m) {
                     textSpan.setAttribute('transform',renderedLetter.m);
                 }
-                if(renderedLetter.mdf.o) {
+                if(renderedLetter._mdf.o) {
                     textSpan.setAttribute('opacity',renderedLetter.o);
                 }
-                if(renderedLetter.mdf.sw){
+                if(renderedLetter._mdf.sw){
                     textSpan.setAttribute('stroke-width',renderedLetter.sw);
                 }
-                if(renderedLetter.mdf.sc){
+                if(renderedLetter._mdf.sc){
                     textSpan.setAttribute('stroke',renderedLetter.sc);
                 }
-                if(renderedLetter.mdf.fc){
+                if(renderedLetter._mdf.fc){
                     textSpan.setAttribute('fill',renderedLetter.fc);
                 }
             }
         }
     }
-}
-
-SVGTextElement.prototype.renderFrame = function(parentMatrix){
-
-    var renderParent = this._parent.renderFrame.call(this,parentMatrix);
-    if(renderParent===false){
-        this.hide();
-        return;
-    }
-    if(this.hidden){
-        this.show();
-    }
-    if(this.firstFrame) {
-        this.firstFrame = false;
-    }
-    this.renderLetters();
-}
+};

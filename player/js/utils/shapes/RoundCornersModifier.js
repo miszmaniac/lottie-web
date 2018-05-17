@@ -1,30 +1,13 @@
-function RoundCornersModifier(){};
-extendPrototype(ShapeModifier,RoundCornersModifier);
-RoundCornersModifier.prototype.processKeys = function(forceRender){
-    if(this.elem.globalData.frameId === this.frameId && !forceRender){
-        return;
-    }
-    this.mdf = forceRender ? true : false;
-    this.frameId = this.elem.globalData.frameId;
-    var i, len = this.dynamicProperties.length;
-
-    for(i=0;i<len;i+=1){
-        this.dynamicProperties[i].getValue();
-        if(this.dynamicProperties[i].mdf){
-            this.mdf = true;
-        }
-    }
-}
+function RoundCornersModifier(){}
+extendPrototype([ShapeModifier],RoundCornersModifier);
 RoundCornersModifier.prototype.initModifierProperties = function(elem,data){
     this.getValue = this.processKeys;
-    this.rd = PropertyFactory.getProp(elem,data.r,0,null,this.dynamicProperties);
-    if(!this.dynamicProperties.length){
-        this.getValue(true);
-    }
+    this.rd = PropertyFactory.getProp(elem,data.r,0,null,this);
+    this._isAnimated = !!this.rd.effectsSequence.length;
 };
 
 RoundCornersModifier.prototype.processPath = function(path, round){
-    var cloned_path = shape_pool.newShape();
+    var cloned_path = shape_pool.newElement();
     cloned_path.c = path.c;
     var i, len = path._length;
     var currentV,currentI,currentO,closerV, newV,newO,newI,distance,newPosPerc,index = 0;
@@ -75,9 +58,9 @@ RoundCornersModifier.prototype.processPath = function(path, round){
         }
     }
     return cloned_path;
-}
+};
 
-RoundCornersModifier.prototype.processShapes = function(firstFrame){
+RoundCornersModifier.prototype.processShapes = function(_isFirstFrame){
     var shapePaths;
     var i, len = this.shapes.length;
     var j, jLen;
@@ -89,9 +72,9 @@ RoundCornersModifier.prototype.processShapes = function(firstFrame){
             shapeData = this.shapes[i];
             newPaths = shapeData.shape.paths;
             localShapeCollection = shapeData.localShapeCollection;
-            if(!(!shapeData.shape.mdf && !this.mdf && !firstFrame)){
+            if(!(!shapeData.shape._mdf && !this._mdf && !_isFirstFrame)){
                 localShapeCollection.releaseShapes();
-                shapeData.shape.mdf = true;
+                shapeData.shape._mdf = true;
                 shapePaths = shapeData.shape.paths.shapes;
                 jLen = shapeData.shape.paths._length;
                 for(j=0;j<jLen;j+=1){
@@ -103,9 +86,8 @@ RoundCornersModifier.prototype.processShapes = function(firstFrame){
 
     }
     if(!this.dynamicProperties.length){
-        this.mdf = false;
+        this._mdf = false;
     }
-}
-
+};
 
 ShapeModifiers.registerModifier('rd',RoundCornersModifier);

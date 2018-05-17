@@ -1,41 +1,34 @@
-function DashProperty(elem, data, renderer, dynamicProperties) {
+function DashProperty(elem, data, renderer, container) {
     this.elem = elem;
     this.frameId = -1;
-    this.dataProps = Array.apply(null,{length:data.length});
+    this.dataProps = createSizedArray(data.length);
     this.renderer = renderer;
-    this.mdf = false;
     this.k = false;
     this.dashStr = '';
-    this.dashArray = createTypedArray('float32',  data.length - 1);
+    this.dashArray = createTypedArray('float32',  data.length ? data.length - 1 : 0);
     this.dashoffset = createTypedArray('float32',  1);
-    var i, len = data.length, prop;
-    for(i=0;i<len;i+=1){
-        prop = PropertyFactory.getProp(elem,data[i].v,0, 0, dynamicProperties);
-        this.k = prop.k ? true : this.k;
+    this.initDynamicPropertyContainer(container);
+    var i, len = data.length || 0, prop;
+    for(i = 0; i < len; i += 1) {
+        prop = PropertyFactory.getProp(elem,data[i].v,0, 0, this);
+        this.k = prop.k || this.k;
         this.dataProps[i] = {n:data[i].n,p:prop};
     }
-    if(this.k){
-        dynamicProperties.push(this);
-    }else{
+    if(!this.k){
         this.getValue(true);
     }
+    this._isAnimated = this.k;
 }
 
 DashProperty.prototype.getValue = function(forceRender) {
     if(this.elem.globalData.frameId === this.frameId && !forceRender){
         return;
     }
-    var i = 0, len = this.dataProps.length;
-    this.mdf = false;
     this.frameId = this.elem.globalData.frameId;
-    while(i<len){
-        if(this.dataProps[i].p.mdf){
-            this.mdf = !forceRender;
-            break;
-        }
-        i+=1;
-    }
-    if(this.mdf || forceRender){
+    this.iterateDynamicProperties();
+    this._mdf = this._mdf || forceRender;
+    if (this._mdf) {
+        var i = 0, len = this.dataProps.length;
         if(this.renderer === 'svg') {
             this.dashStr = '';
         }
@@ -51,4 +44,5 @@ DashProperty.prototype.getValue = function(forceRender) {
             }
         }
     }
-}
+};
+extendPrototype([DynamicPropertyContainer], DashProperty);

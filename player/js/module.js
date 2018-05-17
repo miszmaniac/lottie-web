@@ -1,4 +1,4 @@
-(function(root, factory) {
+(typeof navigator !== "undefined") && (function(root, factory) {
     if (typeof define === "function" && define.amd) {
         define(function() {
             return factory(root);
@@ -10,6 +10,7 @@
         root.bodymovin = root.lottie;
     }
 }((window || {}), function(window) {
+    "use strict";
     /*<%= contents %>*/
     var lottiejs = {};
 
@@ -40,10 +41,6 @@
         animationManager.stop(animation);
     }
 
-    function moveFrame(value) {
-        animationManager.moveFrame(value);
-    }
-
     function searchAnimations() {
         if (standalone === true) {
             animationManager.searchAnimations(animationData, standalone, renderer);
@@ -60,9 +57,9 @@
         animationManager.resize();
     }
 
-    function start() {
+    /*function start() {
         animationManager.start();
-    }
+    }*/
 
     function goToAndStop(val, isFrame, animation) {
         animationManager.goToAndStop(val, isFrame, animation);
@@ -133,13 +130,12 @@
     lottiejs.setSpeed = setSpeed;
     lottiejs.setDirection = setDirection;
     lottiejs.stop = stop;
-    lottiejs.moveFrame = moveFrame;
     lottiejs.searchAnimations = searchAnimations;
     lottiejs.registerAnimation = registerAnimation;
     lottiejs.loadAnimation = loadAnimation;
     lottiejs.setSubframeRendering = setSubframeRendering;
     lottiejs.resize = resize;
-    lottiejs.start = start;
+    //lottiejs.start = start;
     lottiejs.goToAndStop = goToAndStop;
     lottiejs.destroy = destroy;
     lottiejs.setQuality = setQuality;

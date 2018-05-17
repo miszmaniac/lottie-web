@@ -1,18 +1,17 @@
 var TransformPropertyFactory = (function() {
-    
+
     function applyToMatrix(mat) {
-        var i, len = this.dynamicProperties.length;
-        for(i = 0; i < len; i += 1) {
-            this.dynamicProperties[i].getValue();
-            if (this.dynamicProperties[i].mdf) {
-                this.mdf = true;
-            }
-        }
+        var _mdf = this._mdf;
+        this.iterateDynamicProperties();
+        this._mdf = this._mdf || _mdf;
         if (this.a) {
             mat.translate(-this.a.v[0], -this.a.v[1], this.a.v[2]);
         }
         if (this.s) {
             mat.scale(this.s.v[0], this.s.v[1], this.s.v[2]);
+        }
+        if (this.sk) {
+            mat.skewFromAxis(-this.sk.v, this.sa.v);
         }
         if (this.r) {
             mat.rotate(-this.r.v);
@@ -29,35 +28,31 @@ var TransformPropertyFactory = (function() {
             mat.translate(this.p.v[0], this.p.v[1], -this.p.v[2]);
         }
     }
-    function processKeys(){
+    function processKeys(forceRender){
         if (this.elem.globalData.frameId === this.frameId) {
             return;
         }
-
-        this.mdf = false;
-        var i, len = this.dynamicProperties.length;
-
-        for(i = 0; i < len; i += 1) {
-            this.dynamicProperties[i].getValue();
-            if (this.dynamicProperties[i].mdf) {
-                this.mdf = true;
-            }
+        if(this._isDirty) {
+            this.precalculateMatrix();
+            this._isDirty = false;
         }
 
-        if (this.mdf) {
-            this.v.reset();
-            if (this.a) {
+        this.iterateDynamicProperties();
+
+        if (this._mdf || forceRender) {
+            this.v.cloneFromProps(this.pre.props);
+            if (this.appliedTransformations < 1) {
                 this.v.translate(-this.a.v[0], -this.a.v[1], this.a.v[2]);
             }
-            if(this.s) {
+            if(this.appliedTransformations < 2) {
                 this.v.scale(this.s.v[0], this.s.v[1], this.s.v[2]);
             }
-            if (this.sk) {
+            if (this.sk && this.appliedTransformations < 3) {
                 this.v.skewFromAxis(-this.sk.v, this.sa.v);
             }
-            if (this.r) {
+            if (this.r && this.appliedTransformations < 4) {
                 this.v.rotate(-this.r.v);
-            } else {
+            } else if (!this.r && this.appliedTransformations < 4){
                 this.v.rotateZ(-this.rz.v).rotateY(this.ry.v).rotateX(this.rx.v).rotateZ(-this.or.v[2]).rotateY(this.or.v[1]).rotateX(this.or.v[0]);
             }
             if (this.autoOriented && this.p.keyframes && this.p.getValueAtTime) {
@@ -87,26 +82,37 @@ var TransformPropertyFactory = (function() {
         this.frameId = this.elem.globalData.frameId;
     }
 
-    function setInverted(){
-        this.inverted = true;
-        this.iv = new Matrix();
-        if(!this.k){
-            if(this.data.p.s){
-                this.iv.translate(this.px.v,this.py.v,-this.pz.v);
-            }else{
-                this.iv.translate(this.p.v[0],this.p.v[1],-this.p.v[2]);
+    function precalculateMatrix() {
+        if(!this.a.k) {
+            this.pre.translate(-this.a.v[0], -this.a.v[1], this.a.v[2]);
+            this.appliedTransformations = 1;
+        } else {
+            return;
+        }
+        if(!this.s.effectsSequence.length) {
+            this.pre.scale(this.s.v[0], this.s.v[1], this.s.v[2]);
+            this.appliedTransformations = 2;
+        } else {
+            return;
+        }
+        if(this.sk) {
+            if(!this.sk.effectsSequence.length && !this.sa.effectsSequence.length) {
+                this.pre.skewFromAxis(-this.sk.v, this.sa.v);
+            this.appliedTransformations = 3;
+            } else {
+                return;
             }
-            if(this.r){
-                this.iv.rotate(-this.r.v);
-            }else{
-                this.iv.rotateX(-this.rx.v).rotateY(-this.ry.v).rotateZ(this.rz.v);
+        }
+        if (this.r) {
+            if(!this.r.effectsSequence.length) {
+                this.pre.rotate(-this.r.v);
+                this.appliedTransformations = 4;
+            } else {
+                return;
             }
-            if(this.s){
-                this.iv.scale(this.s.v[0],this.s.v[1],1);
-            }
-            if(this.a){
-                this.iv.translate(-this.a.v[0],-this.a.v[1],this.a.v[2]);
-            }
+        } else if(!this.rz.effectsSequence.length && !this.ry.effectsSequence.length && !this.rx.effectsSequence.length && !this.or.effectsSequence.length) {
+            this.pre.rotateZ(-this.rz.v).rotateY(this.ry.v).rotateX(this.rx.v).rotateZ(-this.or.v[2]).rotateY(this.or.v[1]).rotateX(this.or.v[0]);
+            this.appliedTransformations = 4;
         }
     }
 
@@ -115,90 +121,82 @@ var TransformPropertyFactory = (function() {
         //var prevP = this.getValueAtTime();
     }
 
-    function TransformProperty(elem,data,arr){
+    function addDynamicProperty(prop) {
+        this._addDynamicProperty(prop);
+        this.elem.addDynamicProperty(prop);
+        this._isDirty = true;
+    }
+
+    function TransformProperty(elem,data,container){
         this.elem = elem;
         this.frameId = -1;
-        this.type = 'transform';
-        this.dynamicProperties = [];
-        this.mdf = false;
+        this.propType = 'transform';
         this.data = data;
         this.v = new Matrix();
+        //Precalculated matrix with non animated properties
+        this.pre = new Matrix();
+        this.appliedTransformations = 0;
+        this.initDynamicPropertyContainer(container || elem);
         if(data.p.s){
-            this.px = PropertyFactory.getProp(elem,data.p.x,0,0,this.dynamicProperties);
-            this.py = PropertyFactory.getProp(elem,data.p.y,0,0,this.dynamicProperties);
+            this.px = PropertyFactory.getProp(elem,data.p.x,0,0,this);
+            this.py = PropertyFactory.getProp(elem,data.p.y,0,0,this);
             if(data.p.z){
-                this.pz = PropertyFactory.getProp(elem,data.p.z,0,0,this.dynamicProperties);
+                this.pz = PropertyFactory.getProp(elem,data.p.z,0,0,this);
             }
         }else{
-            this.p = PropertyFactory.getProp(elem,data.p,1,0,this.dynamicProperties);
+            this.p = PropertyFactory.getProp(elem,data.p,1,0,this);
         }
         if(data.r) {
-            this.r = PropertyFactory.getProp(elem, data.r, 0, degToRads, this.dynamicProperties);
+            this.r = PropertyFactory.getProp(elem, data.r, 0, degToRads, this);
         } else if(data.rx) {
-            this.rx = PropertyFactory.getProp(elem, data.rx, 0, degToRads, this.dynamicProperties);
-            this.ry = PropertyFactory.getProp(elem, data.ry, 0, degToRads, this.dynamicProperties);
-            this.rz = PropertyFactory.getProp(elem, data.rz, 0, degToRads, this.dynamicProperties);
+            this.rx = PropertyFactory.getProp(elem, data.rx, 0, degToRads, this);
+            this.ry = PropertyFactory.getProp(elem, data.ry, 0, degToRads, this);
+            this.rz = PropertyFactory.getProp(elem, data.rz, 0, degToRads, this);
             if(data.or.k[0].ti) {
                 var i, len = data.or.k.length;
                 for(i=0;i<len;i+=1) {
                     data.or.k[i].to = data.or.k[i].ti = null;
                 }
             }
-            this.or = PropertyFactory.getProp(elem, data.or, 1, degToRads, this.dynamicProperties);
+            this.or = PropertyFactory.getProp(elem, data.or, 1, degToRads, this);
             //sh Indicates it needs to be capped between -180 and 180
             this.or.sh = true;
         }
         if(data.sk){
-            this.sk = PropertyFactory.getProp(elem, data.sk, 0, degToRads, this.dynamicProperties);
-            this.sa = PropertyFactory.getProp(elem, data.sa, 0, degToRads, this.dynamicProperties);
+            this.sk = PropertyFactory.getProp(elem, data.sk, 0, degToRads, this);
+            this.sa = PropertyFactory.getProp(elem, data.sa, 0, degToRads, this);
         }
         if(data.a) {
-            this.a = PropertyFactory.getProp(elem,data.a,1,0,this.dynamicProperties);
+            this.a = PropertyFactory.getProp(elem,data.a,1,0,this);
         }
         if(data.s) {
-            this.s = PropertyFactory.getProp(elem,data.s,1,0.01,this.dynamicProperties);
+            this.s = PropertyFactory.getProp(elem,data.s,1,0.01,this);
         }
+        // Opacity is not part of the transform properties, that's why it won't use this.dynamicProperties. That way transforms won't get updated if opacity changes.
         if(data.o){
-            this.o = PropertyFactory.getProp(elem,data.o,0,0.01,arr);
+            this.o = PropertyFactory.getProp(elem,data.o,0,0.01,elem);
         } else {
-            this.o = {mdf:false,v:1};
+            this.o = {_mdf:false,v:1};
         }
-        if(this.dynamicProperties.length){
-            arr.push(this);
-        }else{
-            if(this.a){
-                this.v.translate(-this.a.v[0],-this.a.v[1],this.a.v[2]);
-            }
-            if(this.s){
-                this.v.scale(this.s.v[0],this.s.v[1],this.s.v[2]);
-            }
-            if(this.sk){
-                this.v.skewFromAxis(-this.sk.v,this.sa.v);
-            }
-            if(this.r){
-                this.v.rotate(-this.r.v);
-            }else{
-                this.v.rotateZ(-this.rz.v).rotateY(this.ry.v).rotateX(this.rx.v).rotateZ(-this.or.v[2]).rotateY(this.or.v[1]).rotateX(this.or.v[0]);
-            }
-            if(this.data.p.s){
-                if(data.p.z) {
-                    this.v.translate(this.px.v, this.py.v, -this.pz.v);
-                } else {
-                    this.v.translate(this.px.v, this.py.v, 0);
-                }
-            }else{
-                this.v.translate(this.p.v[0],this.p.v[1],-this.p.v[2]);
-            }
+        this._isDirty = true;
+        if(!this.dynamicProperties.length){
+            this.getValue(true);
         }
     }
 
-    TransformProperty.prototype.applyToMatrix = applyToMatrix;
-    TransformProperty.prototype.getValue = processKeys;
-    TransformProperty.prototype.setInverted = setInverted;
-    TransformProperty.prototype.autoOrient = autoOrient;
+    TransformProperty.prototype = {
+        applyToMatrix: applyToMatrix,
+        getValue: processKeys,
+        precalculateMatrix: precalculateMatrix,
+        autoOrient: autoOrient
+    }
 
-    function getTransformProperty(elem,data,arr){
-        return new TransformProperty(elem,data,arr)
+    extendPrototype([DynamicPropertyContainer], TransformProperty);
+    TransformProperty.prototype.addDynamicProperty = addDynamicProperty;
+    TransformProperty.prototype._addDynamicProperty = DynamicPropertyContainer.prototype.addDynamicProperty;
+
+    function getTransformProperty(elem,data,container){
+        return new TransformProperty(elem,data,container);
     }
 
     return {

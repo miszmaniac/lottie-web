@@ -2,19 +2,19 @@ function ShapePath(){
 	this.c = false;
 	this._length = 0;
 	this._maxLength = 8;
-	this.v = Array.apply(null,{length:this._maxLength});
-	this.o = Array.apply(null,{length:this._maxLength});
-	this.i = Array.apply(null,{length:this._maxLength});
-};
+	this.v = createSizedArray(this._maxLength);
+	this.o = createSizedArray(this._maxLength);
+	this.i = createSizedArray(this._maxLength);
+}
 
 ShapePath.prototype.setPathData = function(closed, len) {
 	this.c = closed;
 	this.setLength(len);
 	var i = 0;
 	while(i < len){
-		this.v[i] = point_pool.newPoint();
-		this.o[i] = point_pool.newPoint();
-		this.i[i] = point_pool.newPoint();
+		this.v[i] = point_pool.newElement();
+		this.o[i] = point_pool.newElement();
+		this.i[i] = point_pool.newElement();
 		i += 1;
 	}
 };
@@ -24,12 +24,12 @@ ShapePath.prototype.setLength = function(len) {
 		this.doubleArrayLength();
 	}
 	this._length = len;
-}
+};
 
 ShapePath.prototype.doubleArrayLength = function() {
-	this.v = this.v.concat(Array.apply(null,{length:this._maxLength}))
-	this.i = this.i.concat(Array.apply(null,{length:this._maxLength}))
-	this.o = this.o.concat(Array.apply(null,{length:this._maxLength}))
+	this.v = this.v.concat(createSizedArray(this._maxLength));
+	this.i = this.i.concat(createSizedArray(this._maxLength));
+	this.o = this.o.concat(createSizedArray(this._maxLength));
 	this._maxLength *= 2;
 };
 
@@ -51,7 +51,7 @@ ShapePath.prototype.setXYAt = function(x, y, type, pos, replace) {
 			break;
 	}
 	if(!arr[pos] || (arr[pos] && !replace)){
-		arr[pos] = point_pool.newPoint();
+		arr[pos] = point_pool.newElement();
 	}
 	arr[pos][0] = x;
 	arr[pos][1] = y;
@@ -75,6 +75,7 @@ ShapePath.prototype.reverse = function() {
     var cnt = this._length - 1;
     var len = this._length;
 
+    var i;
     for (i = init; i < len; i += 1) {
     	newPath.setTripleAt(vertices[cnt][0], vertices[cnt][1], inPoints[cnt][0], inPoints[cnt][1], outPoints[cnt][0], outPoints[cnt][1], i, false);
         cnt -= 1;

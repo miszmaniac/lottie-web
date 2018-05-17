@@ -13,11 +13,21 @@ var TransformExpressionInterface = (function (){
                 case "ADBE Rotate Z":
                 case 10:
                     return _thisFunction.rotation;
+                case "ADBE Rotate X":
+                    return _thisFunction.xRotation;
+                case "ADBE Rotate Y":
+                    return _thisFunction.yRotation;
                 case "position":
                 case "Position":
                 case "ADBE Position":
                 case 2:
                     return _thisFunction.position;
+                case 'ADBE Position_0':
+                    return _thisFunction.xPosition;
+                case 'ADBE Position_1':
+                    return _thisFunction.yPosition;
+                case 'ADBE Position_2':
+                    return _thisFunction.zPosition;
                 case "anchorPoint":
                 case "AnchorPoint":
                 case "Anchor Point":
@@ -40,6 +50,18 @@ var TransformExpressionInterface = (function (){
                 }
             }
         });
+
+        Object.defineProperty(_thisFunction, "xRotation", {
+            get: function(){
+                    return ExpressionValue(transform.rx, 1/degToRads);
+            }
+        });
+
+        Object.defineProperty(_thisFunction, "yRotation", {
+            get: function(){
+                    return ExpressionValue(transform.ry, 1/degToRads);
+            }
+        });
         Object.defineProperty(_thisFunction, "scale", {
             get: function () {
                 return ExpressionValue(transform.s, 100);
@@ -52,7 +74,7 @@ var TransformExpressionInterface = (function (){
                     return ExpressionValue(transform.p);
                 } else {
                     return [transform.px.v, transform.py.v, transform.pz ? transform.pz.v : 0];
-                };
+                }
             }
         });
 
@@ -105,5 +127,5 @@ var TransformExpressionInterface = (function (){
         });
 
         return _thisFunction;
-    }
+    };
 }());
